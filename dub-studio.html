@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Myanmar Dub Studio</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: 'Pyidaungsu', 'Myanmar Text', sans-serif;
+    background: #0e1116; color: #e6edf3; line-height: 1.6;
+  }
+  header {
+    padding: 16px 24px; background: #161b22;
+    border-bottom: 1px solid #30363d;
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+  }
+  header h1 { margin: 0; font-size: 18px; }
+  header .badge { font-size: 12px; color: #7ee787; background: #1f6feb22; padding: 4px 10px; border-radius: 12px; }
+  main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 16px;
+  }
+  .card h2 { margin: 0 0 12px; font-size: 15px; color: #7ee787; }
+  video { width: 100%; border-radius: 8px; background: #000; }
+  input[type=file] { color: #e6edf3; }
+  button {
+    background: #238636; color: white; border: 0; padding: 8px 14px;
+    border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 13px;
+    transition: background 0.15s;
+  }
+  button:hover { background: #2ea043; }
+  button.secondary { background: #21262d; border: 1px solid #30363d; }
+  button.secondary:hover { background: #30363d; }
+  button.danger { background: #b62324; }
+  button.danger:hover { background: #da3633; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px 6px; border-bottom: 1px solid #30363d; vertical-align: top; text-align: left; }
+  th { color: #8b949e; font-weight: 500; font-size: 12px; }
+  textarea {
+    width: 100%; background: #0d1117; color: #e6edf3; border: 1px solid #30363d;
+    border-radius: 4px; padding: 6px; font-family: inherit; font-size: 12px;
+    resize: vertical; min-height: 42px;
+  }
+  input[type=number] {
+    width: 70px; background: #0d1117; color: #e6edf3; border: 1px solid #30363d;
+    border-radius: 4px; padding: 6px; font-family: monospace; font-size: 12px;
+  }
+  .row-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+  .row-actions button { padding: 4px 8px; font-size: 11px; }
+  .status { font-size: 12px; color: #8b949e; margin-top: 8px; }
+  .status.ok { color: #7ee787; }
+  .status.err { color: #f85149; }
+  .time-cell { white-space: nowrap; }
+  .time-cell input { width: 62px; }
+  .rate-control { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 13px; }
+  .rate-control input { flex: 1; }
+  .pill { padding: 2px 8px; background: #21262d; border-radius: 10px; font-size: 11px; color: #8b949e; }
+  .highlight { background: #1f6feb33 !important; }
+  .log { font-family: monospace; font-size: 11px; color: #8b949e; max-height: 80px; overflow-y: auto; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎬 Myanmar Dub Studio</h1>
+  <span class="badge">Free • Browser-only • No install</span>
+</header>
+
+<main>
+  <div class="grid">
+    <!-- LEFT: Video + Controls -->
+    <div>
+      <div class="card">
+        <h2>1. Video</h2>
+        <input type="file" id="videoInput" accept="video/*">
+        <div style="margin-top:10px"><video id="video" controls></video></div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h2>2. Playback Control</h2>
+        <div class="rate-control">
+          <label>အသံနှုန်း</label>
+          <input type="range" id="rateRange" min="0.5" max="2" step="0.1" value="1">
+          <span class="pill" id="rateVal">1.0x</span>
+        </div>
+        <div class="toolbar">
+          <button id="playDub">▶ Live Dub ဖွင့်</button>
+          <button id="stopDub" class="secondary">⏹ ရပ်</button>
+          <button id="testVoice" class="secondary">🔊 အသံစမ်း</button>
+        </div>
+        <div class="status" id="voiceStatus">Voice စစ်ဆေးနေသည်...</div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h2>3. Import / Export</h2>
+        <div class="toolbar">
+          <button class="secondary" id="importSrt">📥 SRT Import</button>
+          <button class="secondary" id="exportSrt">📤 SRT Export</button>
+          <input type="file" id="srtInput" accept=".srt" style="display:none">
+        </div>
+        <div class="status">SRT ဖိုင်ထဲမှာ English စာသားပါရင် import လုပ်ပြီး auto-translate လုပ်လို့ရ။</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Segments -->
+    <div>
+      <div class="card">
+        <h2>4. Segments</h2>
+        <div class="toolbar">
+          <button id="addSegment">+ စာကြောင်းထည့်</button>
+          <button id="autoTranslateAll">🌐 အားလုံး Auto Translate</button>
+          <button class="danger secondary" id="clearAll">🗑 အားလုံးဖျက်</button>
+        </div>
+        <div class="log" id="log"></div>
+        <div style="max-height: 60vh; overflow-y: auto; margin-top:10px">
+          <table id="segmentsTable">
+            <thead>
+              <tr>
+                <th style="width:40px">#</th>
+                <th style="width:150px">အချိန် (စက္ကန့်)</th>
+                <th>English</th>
+                <th>မြန်မာ</th>
+                <th style="width:90px"></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ---------- State ----------
+const state = {
+  segments: [],
+  currentSegmentIndex: -1,
+  dubbing: false,
+  spokenInCycle: new Set(),
+};
+
+// ---------- DOM ----------
+const $ = (id) => document.getElementById(id);
+const video = $('video');
+const tbody = document.querySelector('#segmentsTable tbody');
+
+// ---------- Logging ----------
+function log(msg, cls) {
+  const el = $('log');
+  el.innerHTML = `<div>${new Date().toLocaleTimeString()} — ${msg}</div>` + el.innerHTML;
+  el.scrollTop = 0;
+}
+
+// ---------- Video upload ----------
+$('videoInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  video.src = URL.createObjectURL(file);
+  log('Video တင်ပြီးပါပြီ: ' + file.name);
+});
+
+// ---------- Voice check ----------
+let myVoice = null;
+function refreshVoices() {
+  const voices = speechSynthesis.getVoices();
+  myVoice = voices.find(v => v.lang === 'my-MM') || voices.find(v => v.lang.startsWith('my')) || null;
+  const el = $('voiceStatus');
+  if (myVoice) {
+    el.textContent = '✅ မြန်မာအသံ တွေ့သည်: ' + myVoice.name;
+    el.className = 'status ok';
+  } else {
+    el.textContent = '⚠️ မြန်မာအသံ မတွေ့ပါ။ OS/Browser မှာ Myanmar voice install လုပ်ပါ (Windows: Settings → Time & Language → Speech)။ Edge browser က အကောင်းဆုံး။';
+    el.className = 'status err';
+  }
+}
+speechSynthesis.onvoiceschanged = refreshVoices;
+refreshVoices();
+
+// ---------- Segment rendering ----------
+function renderSegments() {
+  tbody.innerHTML = '';
+  state.segments.forEach((seg, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td class="time-cell">
+        <input type="number" step="0.1" value="${seg.start.toFixed(1)}" data-i="${i}" data-k="start">
+        →
+        <input type="number" step="0.1" value="${seg.end.toFixed(1)}" data-i="${i}" data-k="end">
+      </td>
+      <td><textarea data-i="${i}" data-k="en">${escapeHtml(seg.en)}</textarea></td>
+      <td><textarea data-i="${i}" data-k="my">${escapeHtml(seg.my)}</textarea></td>
+      <td class="row-actions">
+        <button class="secondary" data-act="translate" data-i="${i}">🌐</button>
+        <button class="secondary" data-act="speak" data-i="${i}">🔊</button>
+        <button class="secondary" data-act="seek" data-i="${i}">⏱</button>
+        <button class="danger" data-act="del" data-i="${i}">✕</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function escapeHtml(s) {
+  return (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ---------- Table events ----------
+tbody.addEventListener('input', (e) => {
+  const t = e.target;
+  const i = +t.dataset.i;
+  const k = t.dataset.k;
+  if (isNaN(i) || !k) return;
+  if (k === 'start' || k === 'end') {
+    state.segments[i][k] = parseFloat(t.value) || 0;
+  } else {
+    state.segments[i][k] = t.value;
+  }
+});
+
+tbody.addEventListener('click', async (e) => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const i = +btn.dataset.i;
+  const act = btn.dataset.act;
+  const seg = state.segments[i];
+  if (act === 'del') {
+    state.segments.splice(i, 1);
+    renderSegments();
+  } else if (act === 'translate') {
+    btn.disabled = true;
+    btn.textContent = '...';
+    try {
+      seg.my = await translateText(seg.en);
+      renderSegments();
+    } catch (err) {
+      log('ဘာသာပြန်မှု မအောင်မြင်ပါ: ' + err.message, 'err');
+    }
+    btn.disabled = false;
+    btn.textContent = '🌐';
+  } else if (act === 'speak') {
+    speakMyanmar(seg.my || seg.en);
+  } else if (act === 'seek') {
+    video.currentTime = seg.start;
+  }
+});
+
+// ---------- Translate (Google → MyMemory fallback) ----------
+async function translateText(text) {
+  text = (text || '').trim();
+  if (!text) return '';
+  // Google unofficial endpoint
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=my&dt=t&q=${encodeURIComponent(text)}`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      const out = data[0].map(item => item[0]).join('').trim();
+      if (out) return out;
+    }
+  } catch (e) { /* fallback */ }
+  // MyMemory fallback
+  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|my`;
+  const res = await fetch(url);
+  const data = await res.json();
+  return (data.responseData?.translatedText || '').trim();
+}
+
+// ---------- Auto translate all ----------
+$('autoTranslateAll').addEventListener('click', async () => {
+  const btn = $('autoTranslateAll');
+  btn.disabled = true;
+  for (let i = 0; i < state.segments.length; i++) {
+    const seg = state.segments[i];
+    if (!seg.en || seg.my) continue;
+    btn.textContent = `🌐 ${i + 1}/${state.segments.length}`;
+    try {
+      seg.my = await translateText(seg.en);
+      renderSegments();
+      await new Promise(r => setTimeout(r, 250)); // rate limit
+    } catch (err) {
+      log('segment ' + (i+1) + ' မအောင်မြင်ပါ: ' + err.message, 'err');
+    }
+  }
+  btn.disabled = false;
+  btn.textContent = '🌐 အားလုံး Auto Translate';
+  log('ဘာသာပြန်ခြင်း ပြီးပါပြီ');
+});
+
+// ---------- Add segment ----------
+$('addSegment').addEventListener('click', () => {
+  const last = state.segments[state.segments.length - 1];
+  const start = last ? last.end : 0;
+  state.segments.push({ start, end: start + 3, en: '', my: '' });
+  renderSegments();
+});
+
+$('clearAll').addEventListener('click', () => {
+  if (!confirm('အားလုံးဖျက်မှာ သေချာလား?')) return;
+  state.segments = [];
+  renderSegments();
+});
+
+// ---------- TTS ----------
+function speakMyanmar(text) {
+  if (!text) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'my-MM';
+  if (myVoice) u.voice = myVoice;
+  u.rate = parseFloat($('rateRange').value);
+  u.pitch = 1;
+  speechSynthesis.speak(u);
+  return u;
+}
+
+$('testVoice').addEventListener('click', () => {
+  speakMyanmar('မင်္ဂလာပါ၊ ဒါက မြန်မာအသံ စမ်းသပ်မှုပါ။');
+});
+
+$('rateRange').addEventListener('input', (e) => {
+  $('rateVal').textContent = parseFloat(e.target.value).toFixed(1) + 'x';
+});
+
+// ---------- Live dub ----------
+let lastTime = 0;
+video.addEventListener('timeupdate', () => {
+  if (!state.dubbing) { lastTime = video.currentTime; return; }
+  const t = video.currentTime;
+  const seg = state.segments.find(s => t >= s.start && t < s.end);
+  if (!seg) return;
+  const idx = state.segments.indexOf(seg);
+  // Trigger once per pass
+  if (t - lastTime < 0.3 && lastTime !== 0) return; // debounce
+  if (state.spokenInCycle.has(idx) && t - lastTime < 0.5) return;
+  if (!state.spokenInCycle.has(idx)) {
+    if (seg.my || seg.en) {
+      speakMyanmar(seg.my || seg.en);
+      state.spokenInCycle.add(idx);
+    }
+  }
+  lastTime = t;
+});
+
+video.addEventListener('seeking', () => {
+  state.spokenInCycle.clear();
+  speechSynthesis.cancel();
+});
+
+video.addEventListener('pause', () => {
+  if (state.dubbing) speechSynthesis.cancel();
+});
+
+video.addEventListener('ended', () => {
+  state.dubbing = false;
+  state.spokenInCycle.clear();
+});
+
+$('playDub').addEventListener('click', () => {
+  if (!video.src) { alert('Video အရင်တင်ပါ'); return; }
+  state.dubbing = true;
+  state.spokenInCycle.clear();
+  video.play();
+  log('Live Dub ဖွင့်ပြီး');
+});
+
+$('stopDub').addEventListener('click', () => {
+  state.dubbing = false;
+  speechSynthesis.cancel();
+  video.pause();
+  log('Live Dub ရပ်ပြီး');
+});
+
+// ---------- SRT ----------
+function toSrtTime(sec) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = Math.floor(sec % 60);
+  const ms = Math.floor((sec % 1) * 1000);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')},${String(ms).padStart(3,'0')}`;
+}
+
+$('exportSrt').addEventListener('click', () => {
+  const srt = state.segments.map((s, i) =>
+    `${i + 1}\n${toSrtTime(s.start)} --> ${toSrtTime(s.end)}\n${s.my || s.en}\n`
+  ).join('\n');
+  const blob = new Blob([srt], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'myanmar-dub.srt';
+  a.click();
+  URL.revokeObjectURL(url);
+  log('SRT export ပြီးပါပြီ');
+});
+
+$('importSrt').addEventListener('click', () => $('srtInput').click());
+$('srtInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const text = await file.text();
+  state.segments = parseSrt(text);
+  renderSegments();
+  log('SRT import ပြီးပါပြီ (' + state.segments.length + ' segments)');
+});
+
+function parseSrt(text) {
+  const blocks = text.replace(/\r/g, '').trim().split(/\n\s*\n/);
+  const out = [];
+  for (const block of blocks) {
+    const lines = block.split('\n').filter(Boolean);
+    const timeIdx = lines.findIndex(l => l.includes('-->'));
+    if (timeIdx < 0) continue;
+    const [s, e] = lines[timeIdx].split('-->').map(t => t.trim());
+    const body = lines.slice(timeIdx + 1).join(' ');
+    out.push({
+      start: parseSrtTime(s),
+      end: parseSrtTime(e),
+      en: body,
+      my: ''
+    });
+  }
+  return out;
+}
+
+function parseSrtTime(t) {
+  const m = t.match(/(\d+):(\d+):(\d+)[,.](\d+)/);
+  if (!m) return 0;
+  return (+m[1]) * 3600 + (+m[2]) * 60 + (+m[3]) + (+m[4]) / 1000;
+}
+</script>
+</body>
+</html>
